@@ -3,7 +3,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const router = express.Router();
 
-const URL = "https://komiku.id/pustaka/";
+const URL = "https://komiku.id/";
 
 function isBlocked(html) {
   return (
@@ -16,23 +16,9 @@ function isBlocked(html) {
 
 router.get("/", async (req, res) => {
   try {
-    const { orderby, genre, genre2, status, category_name } = req.query;
-
-    let targetUrl = URL;
-
-    const params = new URLSearchParams();
-    if (orderby) params.append("orderby", orderby);
-    if (genre) params.append("genre", genre);
-    if (genre2) params.append("genre2", genre2);
-    if (status) params.append("status", status);
-    if (category_name) params.append("category_name", category_name);
-
-    if (params.toString()) {
-      targetUrl += `?${params.toString()}`;
-    }
-
+    const page = req.query.page || 1;
+    const targetUrl = page > 1 ? `${URL}page/${page}/` : URL;
     console.log(`Fetching URL: ${targetUrl}`);
-
     let retries = 0;
     let data;
 
@@ -55,9 +41,7 @@ router.get("/", async (req, res) => {
         data = response.data;
 
         if (isBlocked(data)) {
-          console.log(
-            "Terdeteksi CloudFlare CAPTCHA atau anti-bot, mencoba lagi..."
-          );
+          console.log("Terdeteksi CloudFlare CAPTCHA, mencoba lagi...");
           retries++;
           await new Promise((resolve) => setTimeout(resolve, 2000));
           continue;
@@ -77,442 +61,377 @@ router.get("/", async (req, res) => {
     }
 
     const $ = cheerio.load(data);
-    const komikList = [];
+    const pustaka = [];
 
-    $(
-      "div.daftar div.bge, .daftar .bg, div.bge, .listupd .bge, .bge, article.bs, article.ls2"
-    ).each((i, el) => {
-      const title = $(el)
-        .find("h3, .judul2, .series, .entry-title, a h3, a .judul2")
+    const debugInfo = {
+      url: targetUrl,
+      selectors: {
+        bgeFound: $(".bge").length,
+        daftarFound: $(".daftar").length,
+        mainFound: $("main.perapih").length,
+        ntahFound: $(".ntah").length,
+        h1Found: $("h1").text(),
+        spanHxFound: $("span[hx-get]").length,
+        hxGetValues: [],
+      },
+    };
+
+    $("span[hx-get]").each((i, el) => {
+      debugInfo.selectors.hxGetValues.push($(el).attr("hx-get"));
+    });
+
+    $(".bge").each((i, el) => {
+      const title = $(el).find("h3").text().trim();
+      if (!title) return;
+
+      const originalLink =
+        $(el).find(".bgei a").attr("href") ||
+        $(el).find(".kan a").first().attr("href");
+
+      if (!originalLink) return;
+
+      const thumbnail =
+        $(el).find(".bgei img").attr("src") ||
+        $(el).find(".bgei img").attr("data-src") ||
+        $(el).find("img").attr("src") ||
+        $(el).find("img").attr("data-src");
+
+      const typeAndGenre = $(el).find(".tpe1_inf").text().trim();
+      let type = "";
+      let genre = "";
+
+      if ($(el).find(".tpe1_inf b").length) {
+        type = $(el).find(".tpe1_inf b").text().trim();
+        genre = typeAndGenre.replace(type, "").trim();
+      }
+
+      const updateCount = $(el).find(".up").text().trim().replace("Up ", "");
+      const description = $(el).find(".kan p").text().trim();
+      const infoText = $(el).find(".judul2").text().trim();
+      let readers = "";
+      let lastUpdate = "";
+      let colorStatus = "";
+
+      if (infoText) {
+        const infoMatch = infoText.match(
+          /([0-9,.]+[jt|rb]+)\s+pembaca\s+•\s+([^•]+)(?:•\s+(.+))?/
+        );
+        if (infoMatch) {
+          readers = infoMatch[1].trim();
+          lastUpdate = infoMatch[2].trim();
+          colorStatus = infoMatch[3] ? infoMatch[3].trim() : "";
+        }
+      }
+
+      const firstChapter = $(el)
+        .find(".new1")
+        .first()
+        .find("span:last-child")
+        .text()
+        .trim();
+      const latestChapter = $(el)
+        .find(".new1")
+        .last()
+        .find("span:last-child")
         .text()
         .trim();
 
-      if (!title) return;
+      const firstChapterLink = $(el)
+        .find(".new1")
+        .first()
+        .find("a")
+        .attr("href");
+      const latestChapterLink = $(el)
+        .find(".new1")
+        .last()
+        .find("a")
+        .attr("href");
 
-      const thumbnail =
-        $(el).find("img").attr("src") ||
-        $(el).find("img").attr("data-src") ||
-        $(el).find("img").attr("data-lazy-src");
-
-      const link = $(el).find("a").attr("href") || $(el).attr("href");
-
-      if (title && link) {
-        let type = "";
-        let genres = [];
-        let rating = "";
-        let komikStatus = "";
-
-        if ($(el).find(".tpe1_inf b").length > 0) {
-          type = $(el).find(".tpe1_inf b").text().trim();
-        } else if ($(el).find(".typeflag").length > 0) {
-          type = $(el).find(".typeflag").text().trim();
-        } else if ($(el).find(".type").length > 0) {
-          type = $(el).find(".type").text().trim();
+      let mangaSlug = "";
+      if (originalLink) {
+        const mangaMatches = originalLink.match(/\/manga\/([^/]+)/);
+        if (mangaMatches && mangaMatches[1]) {
+          mangaSlug = mangaMatches[1];
         }
-
-        const genreSelectors = [".genres a", ".genrebaru", ".genre"];
-        genreSelectors.forEach((selector) => {
-          if ($(el).find(selector).length > 0) {
-            $(el)
-              .find(selector)
-              .each((i, genreEl) => {
-                const genreText = $(genreEl).text().trim();
-                if (genreText && !genres.includes(genreText)) {
-                  genres.push(genreText);
-                }
-              });
-          }
-        });
-
-        const ratingSelectors = [".rating", ".numscore", ".score"];
-        for (const selector of ratingSelectors) {
-          if ($(el).find(selector).length > 0) {
-            rating = $(el).find(selector).text().trim();
-            break;
-          }
-        }
-
-        const statusSelectors = [
-          ".status",
-          ".status.Completed",
-          ".status.Ongoing",
-          ".Completed",
-          ".Ongoing",
-        ];
-        for (const selector of statusSelectors) {
-          if ($(el).find(selector).length > 0) {
-            komikStatus = selector.includes("Completed")
-              ? "Completed"
-              : selector.includes("Ongoing")
-              ? "Ongoing"
-              : $(el).find(selector).text().trim();
-            break;
-          }
-        }
-
-        komikList.push({
-          title,
-          thumbnail,
-          link: link?.startsWith("http") ? link : `https://komiku.id${link}`,
-          type,
-          genres,
-          rating,
-          status: komikStatus,
-        });
       }
+
+      pustaka.push({
+        title,
+        originalLink: originalLink?.startsWith("http")
+          ? originalLink
+          : `https://komiku.id${originalLink}`,
+        apiLink: `/detail-komik/${mangaSlug}`,
+        type,
+        genre,
+        thumbnail: thumbnail || "",
+        updateCount,
+        readers,
+        lastUpdate,
+        colorStatus,
+        description,
+        chapters: {
+          first: {
+            title: firstChapter,
+            link: firstChapterLink?.startsWith("http")
+              ? firstChapterLink
+              : `https://komiku.id${firstChapterLink}`,
+          },
+          latest: {
+            title: latestChapter,
+            link: latestChapterLink?.startsWith("http")
+              ? latestChapterLink
+              : `https://komiku.id${latestChapterLink}`,
+          },
+        },
+      });
     });
 
-    if (komikList.length === 0) {
-      console.log("Menerapkan metode alternatif scraping");
+    if (pustaka.length === 0) {
+      console.log(
+        "Tidak menemukan manga dengan selector biasa, mencoba dengan selector universal"
+      );
 
       $("a[href*='/manga/']").each((i, el) => {
         const link = $(el).attr("href");
-        const title =
-          $(el).text().trim() || $(el).find("h3, .judul2").text().trim();
+        if (!link) return;
 
-        if (
-          link &&
-          title &&
-          title.length > 0 &&
-          !link.includes("category") &&
-          !link.includes("genre")
-        ) {
-          const existingIndex = komikList.findIndex(
-            (item) =>
-              item.title === title || (item.link && item.link.includes(link))
-          );
+        if (link.includes("/category/") || link.includes("/genre/")) return;
 
-          if (existingIndex === -1) {
-            komikList.push({
-              title,
-              thumbnail: "",
-              link: link?.startsWith("http")
-                ? link
-                : `https://komiku.id${link}`,
-              type: "",
-              genres: [],
-              rating: "",
-              status: "",
-            });
-          }
+        let parentEl = $(el).closest("div.bge, div.bgei, article");
+        if (!parentEl.length) {
+          parentEl = $(el).parent().parent();
+        }
+
+        const titleEl = parentEl.find("h3").first();
+        const title = titleEl.length
+          ? titleEl.text().trim()
+          : $(el).text().trim();
+
+        if (!title || title.length < 2) return;
+
+        const thumbnail =
+          parentEl.find("img").attr("src") ||
+          parentEl.find("img").attr("data-src");
+
+        let mangaSlug = "";
+        const mangaMatches = link.match(/\/manga\/([^/]+)/);
+        if (mangaMatches && mangaMatches[1]) {
+          mangaSlug = mangaMatches[1];
+        }
+
+        const existingIndex = pustaka.findIndex(
+          (item) =>
+            item.title === title ||
+            (item.originalLink && item.originalLink.includes(mangaSlug))
+        );
+
+        if (existingIndex === -1) {
+          pustaka.push({
+            title,
+            originalLink: link.startsWith("http")
+              ? link
+              : `https://komiku.id${link}`,
+            apiLink: `/detail-komik/${mangaSlug}`,
+            thumbnail: thumbnail || "",
+            type: "Unknown",
+            genre: "",
+          });
         }
       });
     }
 
-    let statsInfo = {
-      totalKomik: "0",
-      totalChapter: "0",
-    };
+    if (pustaka.length === 0) {
+      console.log("Mencoba alternatif terakhir dengan seluruh konten HTML");
 
-    let statsTextArray = [
-      $("h2:contains('Perpustakaan Komik')").next().text(),
-      $(".filter2top").text(),
-      $(".section-header-info").text(),
-      $("h1").next().text(),
-      $("p:contains('judul komik')").text(),
-    ];
+      const htmlSample = data.substring(0, 1000);
+      console.log("Sample HTML:", htmlSample);
 
-    const statsText = statsTextArray.join(" ");
-    const totalMatches = statsText.match(/(\d+[\.,]\d+|\d+)/g);
+      $(
+        "[title*='manga' i], [alt*='manga' i], [title*='komik' i], [alt*='komik' i]"
+      ).each((i, el) => {
+        const title =
+          $(el).attr("title") || $(el).attr("alt") || $(el).text().trim();
+        if (!title || title.length < 3) return;
 
-    if (totalMatches && totalMatches.length >= 1) {
-      statsInfo.totalKomik = totalMatches[0];
-      if (totalMatches.length >= 2) {
-        statsInfo.totalChapter = totalMatches[1];
+        const linkEl = $(el).closest("a") || $(el).find("a").first();
+        const link = linkEl.length ? linkEl.attr("href") : null;
+
+        if (!link) return;
+
+        // Cari gambar terdekat
+        const imgEl = $(el).closest("img") || $(el).find("img").first();
+        const thumbnail = imgEl.length
+          ? imgEl.attr("src") || imgEl.attr("data-src")
+          : null;
+
+        pustaka.push({
+          title,
+          originalLink: link.startsWith("http")
+            ? link
+            : `https://komiku.id${link}`,
+          thumbnail: thumbnail || "",
+          type: "Unknown",
+          source: "alternative-selector",
+        });
+      });
+    }
+
+    // Cek pagination untuk halaman berikutnya
+    let nextPageUrl = null;
+    let hasNextPage = false;
+    let nextPageApiUrl = null;
+
+    // Cari span dengan atribut hx-get untuk pagination API
+    $("span[hx-get]").each((i, el) => {
+      const hxGet = $(el).attr("hx-get");
+      if (hxGet && hxGet.includes("/manga/page/")) {
+        nextPageApiUrl = hxGet;
+        nextPageUrl = `${URL}page/${parseInt(page) + 1}/`;
+        hasNextPage = true;
+      }
+    });
+
+    // Jika tidak menemukan dengan span hx-get, cari dengan selector pagination biasa
+    if (!hasNextPage) {
+      $("a.page-numbers, a.next, a.nextpostslink").each((i, el) => {
+        const href = $(el).attr("href");
+        if (
+          href &&
+          (href.includes("/page/") || $(el).text().includes("Next"))
+        ) {
+          nextPageUrl = href;
+          hasNextPage = true;
+        }
+      });
+    }
+
+    // Jika masih tidak menemukan, cek apakah ada loader/indikator untuk halaman berikutnya
+    if (!hasNextPage) {
+      hasNextPage = $(".hxloading").length > 0 || $("#hxloading").length > 0;
+      if (hasNextPage) {
+        nextPageUrl = `${URL}page/${parseInt(page) + 1}/`;
       }
     }
 
-    if (statsInfo.totalKomik === "0" && !isBlocked(data)) {
-      statsInfo.totalKomik = "5000+";
-      statsInfo.totalChapter = "300000+";
+    // Ekstrak nomor halaman dari URL jika ada
+    let nextPage = null;
+    if (nextPageUrl) {
+      const pageMatch = nextPageUrl.match(/\/page\/(\d+)/);
+      if (pageMatch && pageMatch[1]) {
+        nextPage = parseInt(pageMatch[1]);
+      } else {
+        nextPage = parseInt(page) + 1;
+      }
     }
 
     res.json({
-      stats: statsInfo,
-      filters: {
-        orderby: orderby || "",
-        genre: genre || "",
-        genre2: genre2 || "",
-        status: status || "",
-        category_name: category_name || "",
-      },
-      komik: komikList,
-      debug: {
-        url: targetUrl,
-        selectors: {
-          daftarBgeExists: $(".daftar div.bge").length > 0,
-          listupdBgeExists: $(".listupd .bge").length > 0,
-          daftarExists: $(".daftar").length > 0,
-          bgeExists: $("div.bge").length > 0,
-        },
-        bodyClass: $("body").attr("class"),
-        htmlSnippet: data.substring(0, 200),
-      },
+      page: parseInt(page),
+      hasNextPage,
+      nextPage,
+      nextPageUrl,
+      nextPageApiUrl,
+      totalItems: pustaka.length,
+      komik: pustaka,
+      debug: debugInfo,
     });
   } catch (err) {
     console.error("Error scraping:", err);
     res.status(500).json({
-      error: "Gagal mengambil data pustaka komik",
-      detail: err.message,
-      stack: err.stack,
-    });
-  }
-});
-
-router.get("/genres", async (req, res) => {
-  try {
-    const genres = [
-      "action",
-      "adult",
-      "adventure",
-      "comedy",
-      "cooking",
-      "crime",
-      "demons",
-      "doujinshi",
-      "drama",
-      "ecchi",
-      "fantasy",
-      "game",
-      "gender",
-      "gender-bender",
-      "genderswap",
-      "ghosts",
-      "gore",
-      "harem",
-      "hero",
-      "historical",
-      "horror",
-      "isekai",
-      "josei",
-      "long-strip",
-      "mafia",
-      "magic",
-      "martial-arts",
-      "mature",
-      "mecha",
-      "medical",
-      "military",
-      "monsters",
-      "music",
-      "musical",
-      "mystery",
-      "one-shot",
-      "police",
-      "project",
-      "psychological",
-      "regresion",
-      "regression",
-      "reincarnation",
-      "reincarnation-seinen",
-      "returner",
-      "romance",
-      "school",
-      "school-life",
-      "sci-fi",
-      "seinen",
-      "shotacon",
-      "shoujo",
-      "shoujo-ai",
-      "shounen",
-      "shounen-ai",
-      "slice-of-life",
-      "sport",
-      "sports",
-      "super-power",
-      "supernatural",
-      "supranatural",
-      "survival",
-      "system",
-      "thriller",
-      "time-travel",
-      "tragedy",
-      "vampire",
-      "vampires",
-      "villainess",
-      "web-comic",
-      "yuri",
-    ];
-
-    res.json({ genres });
-  } catch (err) {
-    res.status(500).json({
-      error: "Gagal mengambil daftar genre",
+      error: "Gagal mengambil komik pustaka",
       detail: err.message,
     });
   }
 });
 
-router.get("/filters", (req, res) => {
+// Endpoint untuk mendapatkan daftar komik pustaka dari API spesifik
+router.get("/api-page/:page", async (req, res) => {
   try {
-    const filters = {
-      orderby: [
-        { value: "modified", label: "Update" },
-        { value: "meta_value_num", label: "Peringkat" },
-        { value: "date", label: "Judul Baru" },
-        { value: "rand", label: "Acak" },
-      ],
-      genres: [
-        "action",
-        "adult",
-        "adventure",
-        "comedy",
-        "cooking",
-        "crime",
-        "demons",
-        "doujinshi",
-        "drama",
-        "ecchi",
-        "fantasy",
-        "game",
-        "gender",
-        "gender-bender",
-        "genderswap",
-        "ghosts",
-        "gore",
-        "harem",
-        "hero",
-        "historical",
-        "horror",
-        "isekai",
-        "josei",
-        "long-strip",
-        "mafia",
-        "magic",
-        "martial-arts",
-        "mature",
-        "mecha",
-        "medical",
-        "military",
-        "monsters",
-        "music",
-        "musical",
-        "mystery",
-        "one-shot",
-        "police",
-        "project",
-        "psychological",
-        "regresion",
-        "regression",
-        "reincarnation",
-        "reincarnation-seinen",
-        "returner",
-        "romance",
-        "school",
-        "school-life",
-        "sci-fi",
-        "seinen",
-        "shotacon",
-        "shoujo",
-        "shoujo-ai",
-        "shounen",
-        "shounen-ai",
-        "slice-of-life",
-        "sport",
-        "sports",
-        "super-power",
-        "supernatural",
-        "supranatural",
-        "survival",
-        "system",
-        "thriller",
-        "time-travel",
-        "tragedy",
-        "vampire",
-        "vampires",
-        "villainess",
-        "web-comic",
-        "yuri",
-      ],
-      status: [
-        { value: "ongoing", label: "Ongoing" },
-        { value: "end", label: "Tamat" },
-      ],
-      types: [
-        { value: "manga", label: "Manga" },
-        { value: "manhua", label: "Manhua" },
-        { value: "manhwa", label: "Manhwa" },
-      ],
-    };
+    const page = req.params.page || 1;
 
-    res.json({ filters });
-  } catch (err) {
-    res.status(500).json({
-      error: "Gagal mengambil daftar filter",
-      detail: err.message,
-    });
-  }
-});
+    // URL untuk API pagination yang diekstrak dari HTML
+    const apiUrl = `https://api.komiku.id/manga/page/${page}/`;
 
-// Endpoint untuk debugging, hanya mengembalikan HTML yang diterima
-router.get("/debug", async (req, res) => {
-  try {
-    // Mengambil parameter dari query
-    const { url } = req.query;
+    console.log(`Fetching API URL: ${apiUrl}`);
 
-    // Default ke halaman pustaka jika tidak ada URL
-    const targetUrl = url || URL;
-
-    console.log(`Debug fetching URL: ${targetUrl}`);
-
-    // Melakukan request ke website
-    const { data } = await axios.get(targetUrl, {
+    const { data } = await axios.get(apiUrl, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        Accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.5",
+        Referer: "https://komiku.id/",
       },
     });
 
-    // Menganalisis struktur halaman
+    // Jika respons adalah objek JSON, langsung kirimkan
+    if (typeof data === "object") {
+      return res.json({
+        page: parseInt(page),
+        komik: data,
+        source: "json-api",
+      });
+    }
+
+    // Jika respons adalah HTML, parse dengan cheerio
     const $ = cheerio.load(data);
+    const komikItems = [];
 
-    // Mengekstrak beberapa informasi dasar
-    const title = $("title").text();
-    const metaDesc = $('meta[name="description"]').attr("content");
-    const bodyClasses = $("body").attr("class");
-    const mainContent = $("#Content").html() ? true : false;
+    // Parse HTML dari respons API
+    $(".bge").each((i, el) => {
+      const title = $(el).find("h3").text().trim();
+      if (!title) return;
 
-    // Mencoba ekstrak beberapa elemen penting
-    const komikElements = $(".daftar div.bge, .listupd .bge, div.bge").length;
+      const originalLink =
+        $(el).find(".bgei a").attr("href") ||
+        $(el).find(".kan a").first().attr("href");
 
-    // Mendapatkan 1000 karakter pertama dari HTML untuk debugging
-    const htmlPreview = data.substring(0, 1000);
+      if (!originalLink) return;
 
-    // Cek elemen form filter
-    const filterForm = $("form.filer2").length;
-    const selectElements = $("form.filer2 select").length;
+      const thumbnail =
+        $(el).find(".bgei img").attr("src") ||
+        $(el).find(".bgei img").attr("data-src");
 
-    // Get all available links for analysis
-    const mangaLinks = [];
-    $("a[href*='/manga/']").each((i, el) => {
-      mangaLinks.push({
-        href: $(el).attr("href"),
-        text: $(el).text().trim(),
+      komikItems.push({
+        title,
+        originalLink: originalLink.startsWith("http")
+          ? originalLink
+          : `https://komiku.id${originalLink}`,
+        thumbnail: thumbnail || "",
+        source: "html-api",
       });
     });
 
+    // Jika tidak menemukan manga dengan selector biasa, cari dengan selector alternatif
+    if (komikItems.length === 0) {
+      $("a[href*='/manga/']").each((i, el) => {
+        const link = $(el).attr("href");
+        if (!link || link.includes("/category/") || link.includes("/genre/"))
+          return;
+
+        const title = $(el).text().trim() || $(el).find("h3").text().trim();
+        if (!title || title.length < 3) return;
+
+        const thumbnail =
+          $(el).find("img").attr("src") || $(el).find("img").attr("data-src");
+
+        komikItems.push({
+          title,
+          originalLink: link.startsWith("http")
+            ? link
+            : `https://komiku.id${link}`,
+          thumbnail: thumbnail || "",
+          source: "alternative-api",
+        });
+      });
+    }
+
     res.json({
-      title,
-      metaDesc,
-      bodyClasses,
-      mainContent,
-      komikElements,
-      htmlPreview,
-      url: targetUrl,
-      filterForm,
-      selectElements,
-      mangaLinks: mangaLinks.slice(0, 10), // Limit to first 10 links
-      fullHtml: data.length > 10000 ? data.substring(0, 10000) + "..." : data,
+      page: parseInt(page),
+      komik: komikItems,
     });
   } catch (err) {
-    console.error("Error debugging:", err);
+    console.error("Error fetching API page:", err);
     res.status(500).json({
-      error: "Gagal melakukan debugging",
+      error: "Gagal mengambil data dari API pagination",
       detail: err.message,
-      stack: err.stack,
     });
   }
 });
