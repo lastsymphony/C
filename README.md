@@ -17,6 +17,7 @@ A RESTful API for scraping and serving manga/manhwa/manhua data from Komiku.id.
 - [Response Structure](#response-structure)
 - [Status Codes](#status-codes)
 - [Error Handling](#error-handling)
+- [Deployment](#deployment)
 
 ## Introduction
 
@@ -26,6 +27,12 @@ Mangaverse API provides access to manga, manhwa, and manhua data scraped from Ko
 
 ```
 http://localhost:3000
+```
+
+Jika menggunakan Vercel deployment:
+
+```
+https://your-project-name.vercel.app
 ```
 
 ## Endpoints
@@ -112,41 +119,89 @@ GET /pustaka
 
 #### Query Parameters
 
-| Parameter     | Description             | Example Values                       |
-| ------------- | ----------------------- | ------------------------------------ |
-| orderby       | Order results by        | modified, meta_value_num, date, rand |
-| genre         | Filter by genre         | action, romance, comedy              |
-| status        | Filter by status        | ongoing, end                         |
-| category_name | Filter by category/type | manga, manhwa, manhua                |
+| Parameter     | Description                          | Example Values                       | Default Value   |
+| ------------- | ------------------------------------ | ------------------------------------ | --------------- |
+| page          | Page number                          | 1, 2, 3, etc.                        | 1               |
+| limit         | Number of items per page             | 10, 20, 50, etc.                     | 10              |
+| offset        | Starting position of items to return | 0, 10, 20, etc.                      | (page-1)\*limit |
+| orderby       | Order results by                     | modified, meta_value_num, date, rand | modified        |
+| genre         | Filter by genre                      | action, romance, comedy              | -               |
+| status        | Filter by status                     | ongoing, end                         | -               |
+| category_name | Filter by category/type              | manga, manhwa, manhua                | -               |
 
 #### Response Example
 
 ```json
 {
-  "stats": {
-    "totalKomik": "5000+",
-    "totalChapter": "300000+"
-  },
-  "filters": {
-    "orderby": "modified",
-    "genre": "action",
-    "genre2": "",
-    "status": "ongoing",
-    "category_name": "manga"
-  },
+  "page": 1,
+  "limit": 10,
+  "offset": 0,
+  "hasNextPage": true,
+  "nextPage": 2,
+  "nextPageUrl": "https://komiku.id/page/2/",
+  "nextPageApiUrl": "/manga/page/2/",
+  "totalItems": 56,
   "komik": [
     {
       "title": "One Piece",
-      "thumbnail": "https://thumbnail.komiku.id/wp-content/uploads/2018/09/Komik-One-Piece.jpg?quality=60",
-      "link": "https://komiku.id/manga/one-piece/",
+      "originalLink": "https://komiku.id/manga/one-piece/",
+      "apiLink": "/detail-komik/one-piece",
       "type": "Manga",
-      "genres": ["Action", "Adventure", "Comedy"],
-      "rating": "9.85",
-      "status": "Ongoing"
+      "genre": "Action, Adventure, Comedy",
+      "thumbnail": "https://thumbnail.komiku.id/wp-content/uploads/2018/09/Komik-One-Piece.jpg?quality=60",
+      "updateCount": "5",
+      "readers": "12.5jt",
+      "lastUpdate": "3 jam lalu",
+      "colorStatus": "Berwarna",
+      "description": "Gol D. Roger dikenal sebagai Raja Bajak Laut, Orang terkuat dan paling terkenal yang...",
+      "chapters": {
+        "first": {
+          "title": "Chapter 1",
+          "link": "https://komiku.id/one-piece-chapter-1/"
+        },
+        "latest": {
+          "title": "Chapter 1089",
+          "link": "https://komiku.id/one-piece-chapter-1089/"
+        }
+      }
     },
     ...
   ]
 }
+```
+
+#### Pagination Examples
+
+Get first 10 comics (default behavior):
+
+```
+GET /pustaka
+```
+
+Get 20 comics per page:
+
+```
+GET /pustaka?limit=20
+```
+
+Get second page with 10 comics per page:
+
+```
+GET /pustaka?page=2&limit=10
+```
+
+Get comics starting from position 30, with 20 items:
+
+```
+GET /pustaka?offset=30&limit=20
+```
+
+#### API-Specific Pagination
+
+You can also use the internal pagination API directly:
+
+```
+GET /pustaka/api-page/:page?limit=10&offset=0
 ```
 
 #### Available Filters
@@ -430,6 +485,42 @@ Error responses follow this format:
 ```
 
 In development mode, error responses may also include a `stack` property.
+
+## Deployment
+
+### Deploy to Vercel
+
+Project ini telah dikonfigurasi untuk deployment ke Vercel. Berikut langkah-langkah untuk men-deploy:
+
+1. Buat akun di [Vercel](https://vercel.com) jika belum memiliki.
+2. Install Vercel CLI (opsional):
+   ```
+   npm i -g vercel
+   ```
+3. Login ke Vercel:
+   ```
+   vercel login
+   ```
+4. Deploy project:
+
+   ```
+   vercel
+   ```
+
+   Atau deploy langsung dari dashboard Vercel dengan menghubungkan repository GitHub.
+
+5. Untuk environment production:
+   ```
+   vercel --prod
+   ```
+
+Konfigurasi Vercel terdapat dalam file `vercel.json`, yang mengatur routing dan build settings untuk aplikasi Express.
+
+### Fitur yang Dikonfigurasi:
+
+- **CORS** - memungkinkan akses dari domain manapun.
+- **Runtime Scaling** - otomatis menyesuaikan berdasarkan traffic.
+- **Cron Jobs** - terjadwal setiap 2 jam untuk menjaga instance tetap aktif.
 
 ---
 
