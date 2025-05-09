@@ -17,6 +17,8 @@ function isBlocked(html) {
 router.get("/", async (req, res) => {
   try {
     const page = req.query.page || 1;
+    const limit = req.query.limit || 10;
+    const offset = req.query.offset || (page - 1) * limit;
     const targetUrl = page > 1 ? `${URL}page/${page}/` : URL;
     console.log(`Fetching URL: ${targetUrl}`);
     let retries = 0;
@@ -211,7 +213,9 @@ router.get("/", async (req, res) => {
 
         const thumbnail =
           parentEl.find("img").attr("src") ||
-          parentEl.find("img").attr("data-src");
+          parentEl.find("img").attr("data-src") ||
+          $(el).find("img").attr("src") ||
+          $(el).find("img").attr("data-src");
 
         let mangaSlug = "";
         const mangaMatches = link.match(/\/manga\/([^/]+)/);
@@ -258,7 +262,6 @@ router.get("/", async (req, res) => {
 
         if (!link) return;
 
-        // Cari gambar terdekat
         const imgEl = $(el).closest("img") || $(el).find("img").first();
         const thumbnail = imgEl.length
           ? imgEl.attr("src") || imgEl.attr("data-src")
@@ -276,12 +279,10 @@ router.get("/", async (req, res) => {
       });
     }
 
-    // Cek pagination untuk halaman berikutnya
     let nextPageUrl = null;
     let hasNextPage = false;
     let nextPageApiUrl = null;
 
-    // Cari span dengan atribut hx-get untuk pagination API
     $("span[hx-get]").each((i, el) => {
       const hxGet = $(el).attr("hx-get");
       if (hxGet && hxGet.includes("/manga/page/")) {
@@ -290,8 +291,6 @@ router.get("/", async (req, res) => {
         hasNextPage = true;
       }
     });
-
-    // Jika tidak menemukan dengan span hx-get, cari dengan selector pagination biasa
     if (!hasNextPage) {
       $("a.page-numbers, a.next, a.nextpostslink").each((i, el) => {
         const href = $(el).attr("href");
@@ -305,7 +304,6 @@ router.get("/", async (req, res) => {
       });
     }
 
-    // Jika masih tidak menemukan, cek apakah ada loader/indikator untuk halaman berikutnya
     if (!hasNextPage) {
       hasNextPage = $(".hxloading").length > 0 || $("#hxloading").length > 0;
       if (hasNextPage) {
@@ -313,7 +311,6 @@ router.get("/", async (req, res) => {
       }
     }
 
-    // Ekstrak nomor halaman dari URL jika ada
     let nextPage = null;
     if (nextPageUrl) {
       const pageMatch = nextPageUrl.match(/\/page\/(\d+)/);
@@ -324,14 +321,28 @@ router.get("/", async (req, res) => {
       }
     }
 
+    const totalItems = pustaka.length;
+
+    const startIndex = parseInt(offset);
+    const endIndex = startIndex + parseInt(limit);
+    const slicedPustaka = pustaka.slice(startIndex, endIndex);
+
+    if (totalItems > endIndex) {
+      hasNextPage = true;
+      nextPage = parseInt(page) + 1;
+      nextPageUrl = `${URL}page/${nextPage}/`;
+    }
+
     res.json({
       page: parseInt(page),
+      limit: parseInt(limit),
+      offset: parseInt(offset),
       hasNextPage,
       nextPage,
       nextPageUrl,
       nextPageApiUrl,
-      totalItems: pustaka.length,
-      komik: pustaka,
+      totalItems,
+      komik: slicedPustaka,
       debug: debugInfo,
     });
   } catch (err) {
@@ -343,12 +354,12 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Endpoint untuk mendapatkan daftar komik pustaka dari API spesifik
 router.get("/api-page/:page", async (req, res) => {
   try {
     const page = req.params.page || 1;
+    const limit = req.query.limit || 10;
+    const offset = req.query.offset || (page - 1) * limit;
 
-    // URL untuk API pagination yang diekstrak dari HTML
     const apiUrl = `https://api.komiku.id/manga/page/${page}/`;
 
     console.log(`Fetching API URL: ${apiUrl}`);
@@ -361,20 +372,27 @@ router.get("/api-page/:page", async (req, res) => {
       },
     });
 
-    // Jika respons adalah objek JSON, langsung kirimkan
     if (typeof data === "object") {
+      const totalItems = Array.isArray(data) ? data.length : 0;
+      const startIndex = parseInt(offset);
+      const endIndex = startIndex + parseInt(limit);
+      const slicedData = Array.isArray(data)
+        ? data.slice(startIndex, endIndex)
+        : data;
+
       return res.json({
         page: parseInt(page),
-        komik: data,
+        limit: parseInt(limit),
+        offset: parseInt(offset),
+        totalItems,
+        komik: slicedData,
         source: "json-api",
       });
     }
 
-    // Jika respons adalah HTML, parse dengan cheerio
     const $ = cheerio.load(data);
     const komikItems = [];
 
-    // Parse HTML dari respons API
     $(".bge").each((i, el) => {
       const title = $(el).find("h3").text().trim();
       if (!title) return;
@@ -399,7 +417,6 @@ router.get("/api-page/:page", async (req, res) => {
       });
     });
 
-    // Jika tidak menemukan manga dengan selector biasa, cari dengan selector alternatif
     if (komikItems.length === 0) {
       $("a[href*='/manga/']").each((i, el) => {
         const link = $(el).attr("href");
@@ -423,9 +440,17 @@ router.get("/api-page/:page", async (req, res) => {
       });
     }
 
+    const totalItems = komikItems.length;
+    const startIndex = parseInt(offset);
+    const endIndex = startIndex + parseInt(limit);
+    const slicedItems = komikItems.slice(startIndex, endIndex);
+
     res.json({
       page: parseInt(page),
-      komik: komikItems,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      totalItems,
+      komik: slicedItems,
     });
   } catch (err) {
     console.error("Error fetching API page:", err);
