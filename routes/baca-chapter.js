@@ -139,7 +139,7 @@ router.get("/:slug/:chapter", async (req, res) => {
     }
 
     res.json({
-      breadcrumb,
+      // breadcrumb,
       title,
       mangaInfo: {
         title: mangaTitle,
