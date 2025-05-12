@@ -1,6 +1,15 @@
-# Komiku API
+<p align="center">
+  <a href="https://github.com/LuckyIndraEfendi">
+    <img src="https://avatars.githubusercontent.com/u/68459009?v=4" alt="Logo" width="150" >
+  </a>
 
-A RESTful API for scraping and serving manga/manhwa/manhua data from Komiku.id.
+  <h3 align="center">Komiku-Rest-API</h3>
+
+  <p align="center">
+    <samp>A RESTful API for scraping and serving manga/manhwa/manhua data from <a href="http://komiku.id/">Komiku.id.</a></samp>
+    <br />
+    <a href="#table-of-contents"><strong>Explore the api »</strong></a>
+    <br />
 
 ## Table of Contents
 
