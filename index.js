@@ -28,7 +28,7 @@ const searchRoute = require("./routes/search");
 // Root route
 app.get("/", (req, res) => {
   res.json({
-    message: "Welcome to Mangaverse API",
+    message: "Welcome to Komiku Rest API",
     version: "1.0.0",
     endpoints: [
       "/rekomendasi",

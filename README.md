@@ -1,4 +1,4 @@
-# Mangaverse API
+# Komiku API
 
 A RESTful API for scraping and serving manga/manhwa/manhua data from Komiku.id.
 
@@ -12,6 +12,7 @@ A RESTful API for scraping and serving manga/manhwa/manhua data from Komiku.id.
   - [Latest Updates](#latest-updates)
   - [Library](#library)
   - [Popular Comics](#popular-comics)
+  - [Search](#search)
   - [Comic Details](#comic-details)
   - [Read Chapter](#read-chapter)
 - [Response Structure](#response-structure)
@@ -21,7 +22,7 @@ A RESTful API for scraping and serving manga/manhwa/manhua data from Komiku.id.
 
 ## Introduction
 
-Mangaverse API provides access to manga, manhwa, and manhua data scraped from Komiku.id. This API allows developers to build applications that can display comics, their details, and chapters for reading.
+Komiku API provides access to manga, manhwa, and manhua data scraped from Komiku.id. This API allows developers to build applications that can display comics, their details, and chapters for reading.
 
 ## Base URL
 
@@ -280,6 +281,69 @@ Get only popular manhua:
 GET /komik-populer/manhua
 ```
 
+### Search
+
+Search for comics by keyword.
+
+```
+GET /search?q=keyword
+```
+
+#### Query Parameters
+
+| Parameter | Description                  | Example Values          | Required |
+| --------- | ---------------------------- | ----------------------- | -------- |
+| q         | Keyword to search for comics | one piece, naruto, etc. | Yes      |
+
+#### Response Example
+
+```json
+{
+  "status": true,
+  "message": "Berhasil mendapatkan hasil pencarian",
+  "keyword": "one piece",
+  "url": "https://komiku.id/?s=one%20piece&post_type=manga",
+  "total": 7,
+  "data": [
+    {
+      "title": "One Piece: Ace Story",
+      "altTitle": "One Piece: Cerita Ace",
+      "slug": "one-piece-ace-story",
+      "href": "/detail-komik/one-piece-ace-story/",
+      "thumbnail": "https://cover.komiku.id/wp-content/uploads/2020/09/Komik-One-Piece-Ace-Story.png?resize=450,235&quality=60",
+      "type": "Manga",
+      "genre": "Aksi",
+      "description": "Update 3 tahun lalu. Spin-Off dari serial One Piece yang menceritakan awal karir Portgas D. Ace menjadi bajak laut.",
+      "chapter": {
+        "awal": {
+          "number": "Chapter 01",
+          "link": "/baca-chapter/one-piece-ace-story-chapter-01/"
+        },
+        "terbaru": {
+          "number": "Chapter 04",
+          "link": "/baca-chapter/one-piece-ace-story-chapter-04/"
+        }
+      }
+    },
+    ...
+  ]
+}
+```
+
+#### Search Examples
+
+Search for "naruto":
+
+```
+GET /search?q=naruto
+```
+
+Search for "one piece":
+
+```
+GET /search?q=one%20piece
+```
+
 ### Comic Details
 
 Get detailed information about a specific comic.
@@ -381,23 +445,6 @@ GET /baca-chapter/solo-leveling/179
 
 ```json
 {
-  "breadcrumb": [
-    {
-      "text": "Komiku",
-      "originalLink": "https://komiku.id/",
-      "apiLink": null
-    },
-    {
-      "text": "Komik Solo Leveling",
-      "originalLink": "https://komiku.id/manga/solo-leveling/",
-      "apiLink": "/detail-komik/solo-leveling"
-    },
-    {
-      "text": "Chapter 179",
-      "originalLink": "https://komiku.id/solo-leveling-chapter-179/",
-      "apiLink": null
-    }
-  ],
   "title": "Chapter 179",
   "mangaInfo": {
     "title": "Komik Solo Leveling",
@@ -458,11 +505,13 @@ All responses are in JSON format and generally follow these structures:
 - **List endpoints** (`/rekomendasi`, `/trending`, `/terbaru`): Array of comic items
 - **Detail endpoints** (`/detail-komik/:slug`): Single object with comprehensive information
 - **Chapter endpoints** (`/baca-chapter/:slug/:chapter`): Single object with chapter data and images
+- **Search endpoint** (`/search?q=keyword`): Object with search results and metadata
 
 Most responses include these links:
 
 - `originalLink`: Direct link to the source on Komiku.id
 - `apiLink` or `apiDetailLink`: Internal API link for navigation between endpoints
+- For search results, `href` provides the link to the comic detail page
 
 ## Status Codes
 
