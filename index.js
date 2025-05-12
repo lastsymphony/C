@@ -1,6 +1,9 @@
 const express = require("express");
 const app = express();
 const port = process.env.PORT || 3000;
+const rateLimiter = require("./middleware/rateLimiter");
+
+app.use(rateLimiter);
 
 // Middleware for CORS
 app.use((req, res, next) => {
