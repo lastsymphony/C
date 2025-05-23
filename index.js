@@ -27,6 +27,7 @@ const komikPopulerRoute = require("./routes/komik-populer");
 const detailKomikRoute = require("./routes/detail-komik");
 const bacaChapterRoute = require("./routes/baca-chapter");
 const searchRoute = require("./routes/search");
+const terbaruRoute2 = require("./routes/terbaru-2");
 
 // Root route
 app.get("/", (req, res) => {
@@ -36,6 +37,7 @@ app.get("/", (req, res) => {
     endpoints: [
       "/rekomendasi",
       "/trending",
+      "/terbaru-2",
       "/terbaru",
       "/pustaka",
       "/komik-populer",
@@ -53,6 +55,7 @@ app.use("/pustaka", pustakaRoute);
 app.use("/komik-populer", komikPopulerRoute);
 app.use("/detail-komik", detailKomikRoute);
 app.use("/baca-chapter", bacaChapterRoute);
+app.use("/terbaru-2", terbaruRoute2);
 app.use("/search", searchRoute);
 
 app.listen(port, () => {
