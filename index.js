@@ -1,4 +1,16 @@
 const express = require("express");
+
+// Tambahkan penanganan error global
+process.on('uncaughtException', (err) => {
+  console.error('Ada error yang tidak tertangkap:', err);
+  // Tidak exit process agar aplikasi tetap berjalan
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Tidak exit process agar aplikasi tetap berjalan
+});
+
 const app = express();
 const port = process.env.PORT || 3000;
 const rateLimiter = require("./middleware/rateLimiter");

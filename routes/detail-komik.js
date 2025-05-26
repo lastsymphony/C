@@ -17,6 +17,7 @@ async function scrapeKomikDetail(url) {
         Referer: "https://komiku.id/",
         "Cache-Control": "no-cache",
       },
+      timeout: 10000, // Timeout 10 detik
     });
 
     const $ = cheerio.load(data);
@@ -136,36 +137,56 @@ async function scrapeKomikDetail(url) {
     });
 
     const similarKomik = [];
-    $("section#Spoiler div.grd").each((i, el) => {
-      const title = $(el).find("div.h4").text().trim();
-      const link = $(el).find("a").attr("href");
-      const thumbnail =
-        $(el).find("img").attr("src") || $(el).find("img").attr("data-src");
-      const type = $(el).find("div.tpe1_inf b").text().trim();
-      const genres = $(el).find("div.tpe1_inf").text().replace(type, "").trim();
-      const synopsis = $(el).find("p").text().trim();
-      const views = $(el).find("div.vw").text().trim();
+    try {
+      $("section#Spoiler div.grd").each((i, el) => {
+        try {
+          const title = $(el).find("div.h4").text().trim();
+          const link = $(el).find("a").attr("href");
 
-      let similarKomikSlug = "";
-      if (link) {
-        const mangaMatches = link.match(/\/manga\/([^/]+)/);
-        if (mangaMatches && mangaMatches[1]) {
-          similarKomikSlug = mangaMatches[1];
+          // Perbaikan untuk menangani gambar lazy loading
+          let thumbnail = $(el).find("img").attr("src") || "";
+
+          // Jika gambar menggunakan lazy loading, ambil dari data-src
+          if (
+            $(el).find("img").hasClass("lazy") ||
+            (thumbnail && thumbnail.includes("lazy.jpg"))
+          ) {
+            thumbnail = $(el).find("img").attr("data-src") || thumbnail;
+          }
+
+          const type = $(el).find("div.tpe1_inf b").text().trim() || "";
+          const genres = $(el).find("div.tpe1_inf").text().replace(type, "").trim() || "";
+          const synopsis = $(el).find("p").text().trim() || "";
+          const views = $(el).find("div.vw").text().trim() || "";
+
+          let similarKomikSlug = "";
+          if (link) {
+            const mangaMatches = link.match(/\/manga\/([^/]+)/);
+            if (mangaMatches && mangaMatches[1]) {
+              similarKomikSlug = mangaMatches[1];
+            }
+          }
+
+          similarKomik.push({
+            title,
+            originalLink: link || "",
+            apiLink: similarKomikSlug ? `/detail-komik/${similarKomikSlug}` : null,
+            thumbnail,
+            type,
+            genres,
+            synopsis,
+            views,
+            slug: similarKomikSlug,
+          });
+        } catch (itemError) {
+          console.error("Error processing similar komik item:", itemError);
+          // Lanjutkan ke item berikutnya
         }
-      }
-
-      similarKomik.push({
-        title,
-        originalLink: link,
-        apiLink: similarKomikSlug ? `/detail-komik/${similarKomikSlug}` : null,
-        thumbnail,
-        type,
-        genres,
-        synopsis,
-        views,
-        slug: similarKomikSlug,
       });
-    });
+    } catch (sectionError) {
+      console.error("Error processing similar komik section:", sectionError);
+      // Tetap lanjutkan dengan similarKomik kosong
+    }
 
     return {
       title,
