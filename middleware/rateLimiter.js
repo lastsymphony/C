@@ -3,7 +3,7 @@ const rateLimit = require("express-rate-limit");
 // Rate limiting middleware
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 200,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
