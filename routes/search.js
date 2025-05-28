@@ -22,6 +22,7 @@ router.get("/", async (req, res) => {
         Accept:
           "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         Referer: "https://komiku.id/",
+        "Cache-Control": "public, max-age=3600", // Cache for 1 hour
       },
     });
 
