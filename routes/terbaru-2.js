@@ -15,8 +15,9 @@ router.get("/", async (req, res) => {
         Accept:
           "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
+        "Cache-Control": "public, max-age=3600", // Cache for 1 hour
       },
-      // timeout: 10000, // Opsional: 10 detik timeout
+      timeout: 10000, // Opsional: 10 detik timeout
     });
 
     const $ = cheerio.load(data);
