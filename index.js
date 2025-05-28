@@ -1,18 +1,18 @@
 const express = require("express");
 
 // Tambahkan penanganan error global
-process.on('uncaughtException', (err) => {
-  console.error('Ada error yang tidak tertangkap:', err);
+process.on("uncaughtException", (err) => {
+  console.error("Ada error yang tidak tertangkap:", err);
   // Tidak exit process agar aplikasi tetap berjalan
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
   // Tidak exit process agar aplikasi tetap berjalan
 });
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 const rateLimiter = require("./middleware/rateLimiter");
 
 app.use(rateLimiter);
@@ -34,7 +34,7 @@ app.use((req, res, next) => {
 const rekomendasiRoute = require("./routes/rekomendasi");
 const trendingRoute = require("./routes/trending");
 const terbaruRoute = require("./routes/terbaru");
-const pustakaRoute = require("./routes/pustaka");
+const pustakaRouter = require("./routes/pustaka");
 const komikPopulerRoute = require("./routes/komik-populer");
 const detailKomikRoute = require("./routes/detail-komik");
 const bacaChapterRoute = require("./routes/baca-chapter");
@@ -63,7 +63,7 @@ app.get("/", (req, res) => {
 app.use("/rekomendasi", rekomendasiRoute);
 app.use("/trending", trendingRoute);
 app.use("/terbaru", terbaruRoute);
-app.use("/pustaka", pustakaRoute);
+app.use("/pustaka", pustakaRouter);
 app.use("/komik-populer", komikPopulerRoute);
 app.use("/detail-komik", detailKomikRoute);
 app.use("/baca-chapter", bacaChapterRoute);
