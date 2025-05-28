@@ -15,7 +15,7 @@ async function scrapeKomikDetail(url) {
           "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
         Referer: "https://komiku.id/",
-        "Cache-Control": "no-cache",
+        "Cache-Control": "public, max-age=3600",
       },
       timeout: 10000, // Timeout 10 detik
     });
@@ -155,7 +155,8 @@ async function scrapeKomikDetail(url) {
           }
 
           const type = $(el).find("div.tpe1_inf b").text().trim() || "";
-          const genres = $(el).find("div.tpe1_inf").text().replace(type, "").trim() || "";
+          const genres =
+            $(el).find("div.tpe1_inf").text().replace(type, "").trim() || "";
           const synopsis = $(el).find("p").text().trim() || "";
           const views = $(el).find("div.vw").text().trim() || "";
 
@@ -170,7 +171,9 @@ async function scrapeKomikDetail(url) {
           similarKomik.push({
             title,
             originalLink: link || "",
-            apiLink: similarKomikSlug ? `/detail-komik/${similarKomikSlug}` : null,
+            apiLink: similarKomikSlug
+              ? `/detail-komik/${similarKomikSlug}`
+              : null,
             thumbnail,
             type,
             genres,
