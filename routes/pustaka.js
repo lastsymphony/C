@@ -79,13 +79,13 @@ async function scrapeMangaData(page = 1) {
         firstChapter: firstChapterElement.length
           ? {
               title: firstChapterElement.attr("title"),
-              url: firstChapterElement.attr("href"),
+              url: `/baca-chapter${firstChapterElement.attr("href")}`,
             }
           : null,
         latestChapter: lastChapterElement.length
           ? {
               title: lastChapterElement.attr("title"),
-              url: lastChapterElement.attr("href"),
+              url: `/baca-chapter${lastChapterElement.attr("href")}`,
             }
           : null,
       };
