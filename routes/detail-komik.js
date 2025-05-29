@@ -3,7 +3,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const router = express.Router();
 
-const URL = "https://komiku.id/";
+const URL = "https://komiku.org/";
 
 async function scrapeKomikDetail(url) {
   try {

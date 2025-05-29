@@ -11,7 +11,7 @@ router.get("/", async (req, res) => {
   try {
     console.log(`Mencari manga dengan keyword: ${keyword}`);
 
-    const searchUrl = `https://komiku.id/?s=${encodeURIComponent(
+    const searchUrl = `https://komiku.org/?s=${encodeURIComponent(
       keyword
     )}&post_type=manga`;
 

@@ -18,6 +18,12 @@ const getRandomUserAgent = () => {
   return userAgents[Math.floor(Math.random() * userAgents.length)];
 };
 
+// Function to extract slug from URL
+const extractSlug = (url) => {
+  const matches = url.match(/\/manga\/(.*?)\//);
+  return matches ? matches[1] : "";
+};
+
 // Function to scrape manga data from a given page
 async function scrapeMangaData(page = 1) {
   try {
@@ -46,6 +52,17 @@ async function scrapeMangaData(page = 1) {
     const mangaList = [];
 
     $(".bge").each((i, element) => {
+      const url = $(element).find(".bgei a").attr("href");
+      const slug = extractSlug(url);
+
+      // Get first and last chapter elements using more specific selectors
+      const firstChapterElement = $(element).find(
+        ".new1 a[title*='Chapter']:first"
+      );
+      const lastChapterElement = $(element).find(
+        ".new1 a[title*='Chapter']:last"
+      );
+
       const manga = {
         title: $(element).find(".kan h3").text().trim(),
         thumbnail: $(element).find(".bgei img").attr("src"),
@@ -55,17 +72,22 @@ async function scrapeMangaData(page = 1) {
           .text()
           .replace($(element).find(".tpe1_inf b").text(), "")
           .trim(),
-        url: $(element).find(".bgei a").attr("href"),
+        url: url,
+        detailUrl: `/detail-komik/${slug}`,
         description: $(element).find(".kan p").text().trim(),
         stats: $(element).find(".judul2").text().trim(),
-        firstChapter: {
-          title: $(element).find(".new1:first-child a").attr("title"),
-          url: $(element).find(".new1:first-child a").attr("href"),
-        },
-        latestChapter: {
-          title: $(element).find(".new1:last-child a").attr("title"),
-          url: $(element).find(".new1:last-child a").attr("href"),
-        },
+        firstChapter: firstChapterElement.length
+          ? {
+              title: firstChapterElement.attr("title"),
+              url: firstChapterElement.attr("href"),
+            }
+          : null,
+        latestChapter: lastChapterElement.length
+          ? {
+              title: lastChapterElement.attr("title"),
+              url: lastChapterElement.attr("href"),
+            }
+          : null,
       };
       mangaList.push(manga);
     });

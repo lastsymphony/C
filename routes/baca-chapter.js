@@ -3,7 +3,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const router = express.Router();
 
-const URL_BASE = "https://komiku.id/"; // Renamed for clarity
+const URL_BASE = "https://komiku.org/"; // Renamed for clarity
 
 function extractSlugAndChapter(url) {
   // Regex to match URLs like /slug-chapter-123/ or /manga/slug/chapter/123/ (more flexible)
@@ -114,9 +114,9 @@ router.get("/:slug/:chapter", async (req, res) => {
       // Revised condition to correctly match image URLs from komiku.id's upload directories
       if (
         src &&
-        (src.includes("komiku.id/upload") ||
-          src.includes("cdn.komiku.id/upload") ||
-          src.includes("img.komiku.id/upload")) &&
+        (src.includes("komiku.org/upload") ||
+          src.includes("cdn.komiku.org/upload") ||
+          src.includes("img.komiku.org/upload")) &&
         id
       ) {
         images.push({

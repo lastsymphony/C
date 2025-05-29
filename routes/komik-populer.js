@@ -3,7 +3,7 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const router = express.Router();
 
-const URL_KOMIKU = "https://komiku.id/";
+const URL_KOMIKU = "https://komiku.org/";
 
 /**
  * @param {cheerio.CheerioAPI} $
