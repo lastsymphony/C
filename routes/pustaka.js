@@ -24,6 +24,17 @@ const extractSlug = (url) => {
   return matches ? matches[1] : "";
 };
 
+// Add this helper function after the extractSlug function
+const formatChapterUrl = (url) => {
+  // Extract the manga title and chapter number
+  const match = url.match(/\/([^/]+)-chapter-(\d+)/);
+  if (match) {
+    const [, title, chapter] = match;
+    return `/baca-chapter/${title}/${chapter}`;
+  }
+  return url;
+};
+
 // Function to scrape manga data from a given page
 async function scrapeMangaData(page = 1) {
   try {
@@ -79,13 +90,13 @@ async function scrapeMangaData(page = 1) {
         firstChapter: firstChapterElement.length
           ? {
               title: firstChapterElement.attr("title"),
-              url: `/baca-chapter${firstChapterElement.attr("href")}`,
+              url: formatChapterUrl(firstChapterElement.attr("href")),
             }
           : null,
         latestChapter: lastChapterElement.length
           ? {
               title: lastChapterElement.attr("title"),
-              url: `/baca-chapter${lastChapterElement.attr("href")}`,
+              url: formatChapterUrl(lastChapterElement.attr("href")),
             }
           : null,
       };
