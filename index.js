@@ -40,6 +40,7 @@ const detailKomikRoute = require("./routes/detail-komik");
 const bacaChapterRoute = require("./routes/baca-chapter");
 const searchRoute = require("./routes/search");
 const terbaruRoute2 = require("./routes/terbaru-2");
+const berwarnaRoute = require("./routes/berwarna");
 
 // Root route
 app.get("/", (req, res) => {
@@ -52,6 +53,7 @@ app.get("/", (req, res) => {
       "/terbaru-2",
       "/terbaru",
       "/pustaka",
+      "/berwarna",
       "/komik-populer",
       "/detail-komik/:slug",
       "/baca-chapter/:slug/:chapter",
@@ -69,6 +71,7 @@ app.use("/detail-komik", detailKomikRoute);
 app.use("/baca-chapter", bacaChapterRoute);
 app.use("/terbaru-2", terbaruRoute2);
 app.use("/search", searchRoute);
+app.use("/berwarna", berwarnaRoute);
 
 app.listen(port, () => {
   console.log(`Server jalan di http://localhost:${port}`);
