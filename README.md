@@ -1,5 +1,9 @@
 <!-- GitAds-Verify: WBSRH26RS33MFZHKP3H9ZYH6UFSEW5LS -->
 
+## GitAds Sponsored
+
+[![Sponsored by GitAds](https://gitads.dev/v1/ad-serve?source=vernsg/komiku-rest-api@github)](https://gitads.dev/v1/ad-track?source=vernsg/komiku-rest-api@github)
+
 <p align="center">
   <a href="https://github.com/VernSG">
     <img src="https://avatars.githubusercontent.com/u/68459009?v=4" alt="Logo" width="150" >
