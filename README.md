@@ -1,3 +1,5 @@
+<!-- GitAds-Verify: WBSRH26RS33MFZHKP3H9ZYH6UFSEW5LS -->
+
 <p align="center">
   <a href="https://github.com/LuckyIndraEfendi">
     <img src="https://avatars.githubusercontent.com/u/68459009?v=4" alt="Logo" width="150" >
