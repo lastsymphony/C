@@ -41,6 +41,9 @@ const bacaChapterRoute = require("./routes/baca-chapter");
 const searchRoute = require("./routes/search");
 const terbaruRoute2 = require("./routes/terbaru-2");
 const berwarnaRoute = require("./routes/berwarna");
+const genreAll = require("./routes/genre-all");
+const genreDetail = require("./routes/genre-detail");
+const genreRekomendasi = require("./routes/genre-rekomendasi");
 
 // Root route
 app.get("/", (req, res) => {
@@ -58,6 +61,7 @@ app.get("/", (req, res) => {
       "/detail-komik/:slug",
       "/baca-chapter/:slug/:chapter",
       "/search?q=keyword",
+      "/genre-detail/:slug",
     ],
   });
 });
@@ -72,6 +76,9 @@ app.use("/baca-chapter", bacaChapterRoute);
 app.use("/terbaru-2", terbaruRoute2);
 app.use("/search", searchRoute);
 app.use("/berwarna", berwarnaRoute);
+app.use("/genre-all", genreAll);
+app.use("/genre-rekomendasi", genreRekomendasi);
+app.use("/genre", genreDetail);
 
 app.listen(port, () => {
   console.log(`Server jalan di http://localhost:${port}`);
