@@ -3,10 +3,9 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const router = express.Router();
 
-const URL_BASE = "https://komiku.org/"; // Renamed for clarity
+const URL_BASE = "https://komiku.org/";
 
 function extractSlugAndChapter(url) {
-  // Regex to match URLs like /slug-chapter-123/ or /manga/slug/chapter/123/ (more flexible)
   const matches =
     url.match(/\/([^\/]+?)-chapter-([^\/]+?)(?:\/|$)/) ||
     url.match(/\/manga\/[^\/]+\/chapter\/([^\/]+?)(?:\/|$)/);
@@ -16,7 +15,6 @@ function extractSlugAndChapter(url) {
       chapter: matches[2],
     };
   } else if (url.includes("-chapter-")) {
-    // Fallback for simpler /slug-chapter-num/ pattern
     const parts = url.split("/");
     const chapterPart = parts.find((part) => part.includes("-chapter-"));
     if (chapterPart) {
@@ -45,37 +43,18 @@ router.get("/:slug/:chapter", async (req, res) => {
           "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.5",
         Referer: "https://komiku.id/",
-        "Cache-Control": "public, max-age=3600", // Cache for 1 hour
-        timeout: 10000, // Optional: 10 seconds timeout
+        "Cache-Control": "public, max-age=3600",
+        timeout: 10000,
       },
     });
 
     const $ = cheerio.load(data);
 
-    const breadcrumb = []; // Kept for potential future use, but commented out in response
-    $("#breadcrumb li").each((i, el) => {
-      const text = $(el).find("span").text().trim();
-      const link = $(el).find("a").attr("href");
-
-      let detailLink = null;
-      if (link && link.includes("/manga/")) {
-        const matches = link.match(/\/manga\/([^/]+)/);
-        if (matches && matches[1]) {
-          detailLink = `/detail-komik/${matches[1]}`;
-        }
-      }
-
-      breadcrumb.push({
-        text,
-        originalLink: link || "",
-        apiLink: detailLink,
-      });
-    });
-
     const title = $("#Judul h1").text().trim();
     const mangaTitleElement = $("#Judul p a b");
     const mangaTitle = mangaTitleElement.text().trim();
-    const mangaLink = mangaTitleElement.parent().attr("href"); // Get href from parent <a> of <b>
+    const mangaLink = mangaTitleElement.parent().attr("href");
+
     const description =
       $("#Description")
         .first()
@@ -106,20 +85,18 @@ router.get("/:slug/:chapter", async (req, res) => {
     });
 
     const images = [];
-$("img").each((i, el) => {
-  const src = $(el).attr("src");
-
-  // Hanya ambil gambar yang merupakan halaman komik
-  if (
-    src &&
-    src.includes("komiku.org") &&
-    !src.includes("thumbnail") &&             // ✅ Filter out rekomendasi komik
-    !src.includes("resize") &&                // ✅ Buang thumbnail yang di-resize
-    /\.(jpg|jpeg|png)$/.test(src)             // ✅ Pastikan hanya gambar
-  ) {
-    images.push(src);
-  }
-});
+    $("img").each((i, el) => {
+      const src = $(el).attr("src");
+      if (
+        src &&
+        src.includes("komiku.org") &&
+        !src.includes("thumbnail") &&
+        !src.includes("resize") &&
+        /\.(jpg|jpeg|png)$/.test(src)
+      ) {
+        images.push(src);
+      }
+    });
 
     const chapterValueInfo = $(".chapterInfo").attr("valuechapter") || "";
     const totalImages =
@@ -130,39 +107,25 @@ $("img").each((i, el) => {
       $("time[property='datePublished']").attr("datetime") ||
       $("time").first().text().trim();
 
-    // Revised selectors for previous and next chapter links
-    // These links are often within a specific navigation bar, e.g., #set<chapter_id> .nxpr
-    // Using a more general approach first, then trying specific if needed.
-    // The provided HTML uses #set<numbers> as ID for the floating nav bar.
-    // We target links within .nxpr which usually holds prev/next/all_chapters links.
-
+    // ✅ FIXED: Cari prev dan next berdasarkan nomor
     let prevChapterLink = "";
-    // Komiku uses a link with class 'rl' (read left) for previous chapter
-    // It's usually inside a div with class 'nxpr' in a floating menu (e.g., id="setxxxxx")
-    const prevLinkElement = $(".nxpr a.rl[href*='-chapter-']");
-    if (prevLinkElement.length > 0) {
-      prevChapterLink = prevLinkElement.attr("href");
-    } else {
-      // Fallback if the specific structure changed, less reliable
-      // This was your original, which might be too broad or rely on text not present
-      // prevChapterLink = $("a:contains('Chapter Sebelumnya')").attr("href") || "";
-    }
-
     let nextChapterLink = "";
-    // Komiku might use 'rr' (read right) or it's the other chapter link in .nxpr
-    const nextLinkElementRR = $(".nxpr a.rr[href*='-chapter-']");
-    if (nextLinkElementRR.length > 0) {
-      nextChapterLink = nextLinkElementRR.attr("href");
-    } else {
-      // Fallback: Find any link in .nxpr that looks like a chapter link and isn't the previous one or the all chapters list
-      $(".nxpr a[href*='-chapter-']").each((i, el) => {
-        const potentialNextHref = $(el).attr("href");
-        if (potentialNextHref !== prevChapterLink) {
-          nextChapterLink = potentialNextHref;
-          return false; // Found a potential next link
+
+    $(".nxpr a[href*='-chapter-']").each((i, el) => {
+      const href = $(el).attr("href");
+      const { chapter: foundChapter } = extractSlugAndChapter(href);
+
+      if (foundChapter) {
+        const foundNum = parseFloat(foundChapter.replace(/[^0-9.]/g, ""));
+        const currentNum = parseFloat(chapter.replace(/[^0-9.]/g, ""));
+
+        if (foundNum < currentNum) {
+          prevChapterLink = href;
+        } else if (foundNum > currentNum) {
+          nextChapterLink = href;
         }
-      });
-    }
+      }
+    });
 
     let prevChapterInfo = null;
     if (prevChapterLink) {
@@ -172,11 +135,7 @@ $("img").each((i, el) => {
         prevChapterInfo = {
           originalLink: prevChapterLink.startsWith("http")
             ? prevChapterLink
-            : `${URL_BASE}${
-                prevChapterLink.startsWith("/")
-                  ? prevChapterLink.substring(1)
-                  : prevChapterLink
-              }`,
+            : `${URL_BASE}${prevChapterLink.replace(/^\//, "")}`,
           apiLink: `/baca-chapter/${prevSlug}/${prevChapter}`,
           slug: prevSlug,
           chapter: prevChapter,
@@ -192,11 +151,7 @@ $("img").each((i, el) => {
         nextChapterInfo = {
           originalLink: nextChapterLink.startsWith("http")
             ? nextChapterLink
-            : `${URL_BASE}${
-                nextChapterLink.startsWith("/")
-                  ? nextChapterLink.substring(1)
-                  : nextChapterLink
-              }`,
+            : `${URL_BASE}${nextChapterLink.replace(/^\//, "")}`,
           apiLink: `/baca-chapter/${nextSlug}/${nextChapter}`,
           slug: nextSlug,
           chapter: nextChapter,
@@ -205,17 +160,12 @@ $("img").each((i, el) => {
     }
 
     res.json({
-      // breadcrumb, // Uncomment if needed
       title,
       mangaInfo: {
         title: mangaTitle,
         originalLink: mangaLink?.startsWith("http")
           ? mangaLink
-          : mangaLink
-          ? `${URL_BASE}${
-              mangaLink.startsWith("/") ? mangaLink.substring(1) : mangaLink
-            }`
-          : null,
+          : `${URL_BASE}${mangaLink?.replace(/^\//, "")}`,
         apiLink: mangaSlug ? `/detail-komik/${mangaSlug}` : null,
         slug: mangaSlug,
       },
@@ -224,15 +174,15 @@ $("img").each((i, el) => {
       images,
       meta: {
         chapterNumber: chapterValueInfo || chapter,
-        totalImages: parseInt(totalImages) || 0,
+        totalImages: parseInt(totalImages) || images.length,
         publishDate,
         viewAnalyticsUrl,
-        slug: slug, // current slug
+        slug,
       },
       navigation: {
         prevChapter: prevChapterInfo,
         nextChapter: nextChapterInfo,
-        allChapters: mangaSlug ? `/detail-komik/${mangaSlug}` : null, // Link to see all chapters, typically the manga detail page
+        allChapters: mangaSlug ? `/detail-komik/${mangaSlug}` : null,
       },
       additionalDescription,
     });
@@ -241,42 +191,6 @@ $("img").each((i, el) => {
     res.status(500).json({
       error: "Gagal mengambil data chapter komik",
       detail: err.message,
-      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
-    });
-  }
-});
-
-router.get("/url", async (req, res) => {
-  try {
-    const { url } = req.query;
-
-    if (!url) {
-      return res.status(400).json({
-        error: "URL parameter diperlukan",
-      });
-    }
-
-    if (!url.includes("komiku.id/") || !url.includes("chapter")) {
-      return res.status(400).json({
-        error: "URL tidak valid, harus dari komiku.id dan berisi 'chapter'",
-      });
-    }
-
-    const { slug, chapter } = extractSlugAndChapter(url);
-
-    if (!slug || !chapter) {
-      return res.status(400).json({
-        error: "URL tidak valid, tidak bisa mengekstrak slug dan nomor chapter",
-      });
-    }
-    // Redirect to the main route
-    return res.redirect(`/baca-chapter/${slug}/${chapter}`);
-  } catch (err) {
-    console.error("Error fetching chapter from URL:", err);
-    res.status(500).json({
-      error: "Gagal mengambil data chapter komik dari URL",
-      detail: err.message,
-      stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
     });
   }
 });
