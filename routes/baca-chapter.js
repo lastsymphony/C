@@ -108,7 +108,15 @@ router.get("/:slug/:chapter", async (req, res) => {
     const images = [];
 $("img").each((i, el) => {
   const src = $(el).attr("src");
-  if (src && /komiku\.org\/.*\.(jpg|jpeg|png)/.test(src)) {
+
+  // Hanya ambil gambar yang merupakan halaman komik
+  if (
+    src &&
+    src.includes("komiku.org") &&
+    !src.includes("thumbnail") &&             // ✅ Filter out rekomendasi komik
+    !src.includes("resize") &&                // ✅ Buang thumbnail yang di-resize
+    /\.(jpg|jpeg|png)$/.test(src)             // ✅ Pastikan hanya gambar
+  ) {
     images.push(src);
   }
 });
