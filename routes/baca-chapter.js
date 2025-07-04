@@ -108,7 +108,7 @@ router.get("/:slug/:chapter", async (req, res) => {
     const images = [];
 $("img").each((i, el) => {
   const src = $(el).attr("src");
-  if (src && src.includes("komiku.org/wp-content/uploads")) {
+  if (src && /komiku\.org\/.*\.(jpg|jpeg|png)/.test(src)) {
     images.push(src);
   }
 });
