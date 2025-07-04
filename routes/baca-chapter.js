@@ -106,29 +106,12 @@ router.get("/:slug/:chapter", async (req, res) => {
     });
 
     const images = [];
-    $("#Baca_Komik img").each((i, el) => {
-      const src = $(el).attr("src");
-      const alt = $(el).attr("alt");
-      const id = $(el).attr("id");
-
-      // Revised condition to correctly match image URLs from komiku.id's upload directories
-      if (
-        src &&
-        (src.includes("komiku.org/upload") ||
-          src.includes("cdn.komiku.org/upload") ||
-          src.includes("img.komiku.org/upload")) &&
-        id
-      ) {
-        images.push({
-          src,
-          alt,
-          id,
-          fallbackSrc: src
-            .replace("cdn.komiku.id", "img.komiku.id")
-            .replace("komiku.id/upload", "img.komiku.id/upload"), // More robust fallback
-        });
-      }
-    });
+$("img").each((i, el) => {
+  const src = $(el).attr("src");
+  if (src && src.includes("komiku.org/wp-content/uploads")) {
+    images.push(src);
+  }
+});
 
     const chapterValueInfo = $(".chapterInfo").attr("valuechapter") || "";
     const totalImages =
